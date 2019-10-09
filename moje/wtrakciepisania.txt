@@ -1,0 +1,40 @@
+|_id	|thread_id	|address	|m_size	|person	|date		|date_sent	|protocol	|read	|status	|type	|reply_path_present	|subject	|body	|service_center	|locked	|sub_id	|error_code	|creator				|seen	|ipmsg_id	|ref_id	|total_len	|rec_len
+|int	|int		|string		|null	|int	|int		|int		|null		|int	|int	|int	|null			|null		|string	|null		|int	|int	|int		|string					|int	|int		|null	|null		|null
+|1	|7		|+48 508140884	|null	|0	|337107515	|0		|null		|1	|-1	|2	|null			|null		|Test	|null		|0	|-1	|0		|com.google.android.apps.messaging	|1	|0		|null	|null		|null
+
+
+wstawiam:	
+|_id	|thread_id	|address	|m_size	|person	|date		|date_sent	|protocol	|read	|status	|type	|reply_path_present	|subject	|body	|service_center	|locked	|sub_id	|error_code	|creator				|seen	|ipmsg_id	|ref_id	|total_len	|rec_len
+|int	|int		|string		|null	|int	|int		|int		|null		|int	|int	|int	|null			|null		|string	|null		|int	|int	|int		|string					|int	|int		|null	|null		|null
+|	|		|		|	|	|1535494711000	| <--		|		|true	| -1	| 1	|			|		|...	|		|	|	|		|					| true	|		|	|		|
+
+"date=1535494711000 read=true address=+48531222692 date_sent=1535494711000 body=Dzisiaj na czat raczej nie wejde, robil.trzy.prania, rozwieszalam, sprzatalam dom...musze jeszcze jechac teraz do paczkomatu z.mama... type=1 seen=true status=-1"
+
+sroda, 13:09	26/3/2020
+lub czwartek 0:47 27/3/2020
+
+    337107515	= 26/3/2020 13:09 = correct inside Android
+1535494711000	= 2018 rok, msec po epoch 1970
+
+
+LocalTimeStamp /1000 - 11644473600000 => date
+
+11644473600000 = 100ns intervals since 01-01-1601 to 01-01-1970
+
+
+
+export z Android:
+Outbox|||????|+48 508140884|25/03/2020 23:47:19|Test
+
+in/out|contactname|from|rcptname|rcptphonenumer|timestamp|body
+
+jest z Windows:
+Inbox	|Joanna Karocka	|+48508140884	|		|		|23/01/2020 12:46:27|Wysylam
+Outbox	|		|		|KaskazKrakowa	|+48664134579	|19/01/2020 13:46:19|Przepraszam. Juz bede czekać milczaco.
+
+export z Android:
+Outbox	|		|		|????		|+48 508140884	|25/03/2020 23:47:19|Test
+
+first name=Joanna
+lastname = Karocka
+displayname = Joanna

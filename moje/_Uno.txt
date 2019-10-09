@@ -1,0 +1,71 @@
+
+EXPORT:
+* Windows.Storage.KnownFolders.RemovableDevices => \_mojeSuby\Uno-knownfolders.txt
+* background => => \_mojeSuby\Uno-background.txt
+
+Windows.ApplicationModel.Chat.ChatMessageReader - nie krzyczy ze w Uno nie ma?
+new Windows.ApplicationModel.Chat.ChatMessage(); - tez nie krzyczy
+
+zaczac od struct 
+
+ale krzyczy ze:
+Windows.ApplicationModel.Chat.ChatMessageManager.RequestStoreAsync()
+oStore.GetMessageReader()
+
+oRdr.ReadBatchAsync()
+
+- na poczatek moze bez zapisu, tylko do Clipboard
+
+IMPORT:
+* Windows.Storage.Pickers.FileOpenPicker() => \_mojeSuby\Uno-filepicker.txt
+picker.FileTypeFilter
+picker.PickSingleFileAsync()
+
+* Windows.Storage.FileIO.ReadTextAsync [ale FileIO.WriteTextAsync(oFile, sTxt); - czeka na accept/merge]
+* oStore.SaveMessageAsync
+
+* przeniesc do Uno podstawowe struktury SMS, branch SMSandro
+* SMSLOG zrobic i sprawdzic
+
+
+
+Uno101:
+
+<import>
+jest = nie ma
+Windows.ApplicationModel.Chat.ChatMessageStore oStore = await Windows.ApplicationModel.Chat.ChatMessageManager.RequestStoreAsync();
+
+Windows.Storage.Pickers.FileOpenPicker();
+picker.FileTypeFilter.Add(".csv");
+picker.PickSingleFileAsync();
+
+JEST Windows.ApplicationModel.Chat.ChatMessage();
+niema=niema
+done oMsg.MessageKind = Windows.ApplicationModel.Chat.ChatMessageKind.Standard;
+niema=niema
+done oMsg.MessageOperatorKind = Windows.ApplicationModel.Chat.ChatMessageOperatorKind.Sms;
+
+done oMsg.IsIncoming = true;
+done oMsg.From
+done oMsg.IsRead
+done oMsg.IsSeen
+niema = jest
+done oMsg.Status = Windows.ApplicationModel.Chat.ChatMessageStatus.Received;
+done oMsg.LocalTimestamp
+done oMsg.NetworkTimestamp
+oStore.SaveMessageAsync(oMsg);
+
+<export>
+
+#if NETFX_CORE
+
+done Windows.Storage.KnownFolders.RemovableDevices;
+done externalDevices.GetFoldersAsync();
+
+Windows.ApplicationModel.Chat.ChatMessageManager.RequestStoreAsync();
+oStore.GetMessageReader();
+
+oRdr.ReadBatchAsync();
+done oMsg.IsIncoming
+done oMsg.From
+done oMsg.LocalTimestamp
