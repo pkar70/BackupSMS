@@ -14,7 +14,7 @@
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <ProgressRing x:Name="uiProcesuje" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" Grid.RowSpan="3"/>
+        <!--<ProgressRing x:Name="uiProcesuje" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" Grid.RowSpan="3" Canvas.ZIndex="10000" />-->
 
         <StackPanel Margin="10,10,10,10" Grid.Row="0">
             <TextBlock Text="Backup SMS" HorizontalAlignment="Center" FontSize="20" />

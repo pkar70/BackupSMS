@@ -10,6 +10,8 @@ using System.Linq;
 
 namespace BeforeUno
 {
+#if false
+
 	#region "myDumps"
 
 	class MyDUmps
@@ -179,6 +181,8 @@ namespace BeforeUno
 			if (requestedPermissions is null)
 				return null;
 
+
+			// ew. może być: Windows.Extensions.PermissionsHelper.IsDeclaredInManifest(permission))
 			bool bInManifest = requestedPermissions.Any(p => p.Equals(Android.Manifest.Permission.ReadContacts, StringComparison.OrdinalIgnoreCase));// false;
 			//bool bInManifest = false; // 
 			//foreach (string oPerm in requestedPermissions)
@@ -192,7 +196,8 @@ namespace BeforeUno
 
 
 			// check if permission is granted
-			if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(Uno.UI.ContextHelper.Current, Android.Manifest.Permission.ReadContacts)
+			// było: 
+			if (AndroidX.Core.Content.ContextCompat.CheckSelfPermission(Uno.UI.ContextHelper.Current, Android.Manifest.Permission.ReadContacts)
 					== Android.Content.PM.Permission.Granted)
 			{
 				return new ContactStore();
@@ -220,7 +225,8 @@ namespace BeforeUno
 			{
 				current.RequestPermissionsResultWithResults += handler;
 
-				Android.Support.V4.App.ActivityCompat.RequestPermissions(Uno.UI.BaseActivity.Current, 
+                //Android.Support.V4.App.ActivityCompat.RequestPermissions(Uno.UI.BaseActivity.Current, 
+                AndroidX.Core.App.ActivityCompat.RequestPermissions(Uno.UI.BaseActivity.Current,
 					new[] { Android.Manifest.Permission.ReadContacts }, 1);
 
 				var result = await tcs.Task;
@@ -848,13 +854,14 @@ namespace BeforeUno
 			List<string> requestPermission = new List<string>();
 
 			// check if permission is granted
-			if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(Uno.UI.ContextHelper.Current, Android.Manifest.Permission.ReadCallLog)
+			// Android.Support.V4.Content.ContextCompat.CheckSelfPermission
+			if (AndroidX.Core.Content.ContextCompat.CheckSelfPermission(Uno.UI.ContextHelper.Current, Android.Manifest.Permission.ReadCallLog)
 					!= Android.Content.PM.Permission.Granted)
 			{
 				requestPermission.Add(Android.Manifest.Permission.ReadCallLog);
 			}
 
-			if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(Uno.UI.ContextHelper.Current, Android.Manifest.Permission.ReadContacts)
+			if (AndroidX.Core.Content.ContextCompat.CheckSelfPermission(Uno.UI.ContextHelper.Current, Android.Manifest.Permission.ReadContacts)
 					!= Android.Content.PM.Permission.Granted)
 			{
 				requestPermission.Add(Android.Manifest.Permission.ReadContacts);
@@ -862,7 +869,7 @@ namespace BeforeUno
 
 			if (accessType == Windows.ApplicationModel.Calls.PhoneCallHistoryStoreAccessType.AllEntriesReadWrite)
 			{
-				if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(Uno.UI.ContextHelper.Current, Android.Manifest.Permission.WriteCallLog)
+				if (AndroidX.Core.Content.ContextCompat.CheckSelfPermission(Uno.UI.ContextHelper.Current, Android.Manifest.Permission.WriteCallLog)
 						!= Android.Content.PM.Permission.Granted)
 				{
 					requestPermission.Add(Android.Manifest.Permission.WriteCallLog);
@@ -893,7 +900,7 @@ namespace BeforeUno
 			{
 				current.RequestPermissionsResultWithResults += handler;
 
-				Android.Support.V4.App.ActivityCompat.RequestPermissions(Uno.UI.BaseActivity.Current, requestPermission.ToArray(), 1);
+				AndroidX.Core.App.ActivityCompat.RequestPermissions(Uno.UI.BaseActivity.Current, requestPermission.ToArray(), 1);
 
 				var result = await tcs.Task;
 				if (result.GrantResults.Length < 1)
@@ -1009,11 +1016,11 @@ namespace BeforeUno
 	}
 
 
-    #endregion
+	#endregion
 
-    #region "SMS"
+	#region "SMS"
 
-    #region "InsideUno945"
+	#region "InsideUno945"
     public partial interface IChatItem
 	{
 		//Windows.ApplicationModel.Chat.ChatItemKind ItemKind { get; }
@@ -1096,6 +1103,7 @@ namespace BeforeUno
 			if (_cursor.MoveToFirst())
 			{ // runtime optimizations
 				_colBody = _cursor.GetColumnIndex(Android.Provider.Telephony.TextBasedSmsColumns.Body);
+				
 				_colTime = _cursor.GetColumnIndex(Android.Provider.Telephony.TextBasedSmsColumns.Date);	//int
 				_colInOut = _cursor.GetColumnIndex(Android.Provider.Telephony.TextBasedSmsColumns.Type ); // 1:inbox, 4:outbox, 2:sent, ...
 				_colRead = _cursor.GetColumnIndex(Android.Provider.Telephony.TextBasedSmsColumns.Read );	// int (bool)
@@ -1244,7 +1252,7 @@ namespace BeforeUno
 			{
 				current.RequestPermissionsResultWithResults += handler;
 
-				Android.Support.V4.App.ActivityCompat.RequestPermissions(Uno.UI.BaseActivity.Current, missing, 1);
+				AndroidX.Core.App.ActivityCompat.RequestPermissions(Uno.UI.BaseActivity.Current, missing, 1);
 
 				var result = await tcs.Task;
 				if (result.GrantResults.Length < 1)
@@ -1388,7 +1396,7 @@ namespace BeforeUno
 		private List<string> _fileTypeFilter = new List<string>();
 		private string _docUri = "";
 
-		public PickerLocationId SuggestedStartLocation { get; set; } = PickerLocationId.DocumentsLibrary;
+		public Windows.Storage.Pickers.PickerLocationId SuggestedStartLocation { get; set; } = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
 		public string SettingsIdentifier { get; set; } = "";
 		public IList<string> FileTypeFilter => _fileTypeFilter;
 
@@ -1436,23 +1444,23 @@ namespace BeforeUno
 			switch(SuggestedStartLocation)
 			{
 				// see also Windows.Storage.KnownFolders
-				case PickerLocationId.DocumentsLibrary:
+				case Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary:
 					_docUri = "file://" + Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryDocuments).CanonicalPath;
 					break;
-				case PickerLocationId.MusicLibrary:
+				case Windows.Storage.Pickers.PickerLocationId.MusicLibrary:
 					_docUri = "file://" + Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryMusic).CanonicalPath;
 					break;
-				case PickerLocationId.PicturesLibrary:
+				case Windows.Storage.Pickers.PickerLocationId.PicturesLibrary:
 					// Warning: Camera probably is outside this folder!
 					_docUri = "file://" + Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryPictures).CanonicalPath;
 					break;
-				case PickerLocationId.Downloads:
+				case Windows.Storage.Pickers.PickerLocationId.Downloads:
 					_docUri = "file://" + Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryDownloads).CanonicalPath;
 					break;
-				case PickerLocationId.VideosLibrary:
+				case Windows.Storage.Pickers.PickerLocationId.VideosLibrary:
 					_docUri = "file://" + Android.OS.Environment.GetExternalStoragePublicDirectory(Android.OS.Environment.DirectoryMovies).CanonicalPath;
 					break;
-				case PickerLocationId.Unspecified:
+				case Windows.Storage.Pickers.PickerLocationId.Unspecified:
 					_docUri = "";
 					break;
 				default:
@@ -1544,6 +1552,9 @@ namespace BeforeUno
 
 		}
 
+		// po nowemu moze byloby z Xamarin.Essentials
+		// https://github.com/xamarin/Essentials/blob/main/Xamarin.Essentials/FilePicker/FilePicker.android.cs
+
 		private Task<List<Windows.Storage.StorageFile>> PickFilesAsync(bool multiple)
 		{
 			var intent = new Android.Content.Intent(Android.App.Application.Context, typeof(FileOpenPickerActivity));
@@ -1551,6 +1562,7 @@ namespace BeforeUno
 			intent.PutExtra("multiple", multiple);
 			intent.PutExtra("initialdir", _docUri);
 			intent.PutExtra("mimetypes", UWPextension2Mime().ToArray());
+			intent.AddFlags(Android.Content.ActivityFlags.NewTask); // Intent.FLAG_ACTIVITY_NEW_TASK);
 
 			// wrap it in Task
 			completionSource = new TaskCompletionSource<List<Windows.Storage.StorageFile>>();
@@ -1689,29 +1701,31 @@ namespace BeforeUno
 			FilePicked?.Invoke(null, pickedFiles);
 		}
 	}
-
-	public enum PickerLocationId
-	{
-		DocumentsLibrary,
-		ComputerFolder,
-		Desktop,
-		Downloads,
-		HomeGroup,
-		MusicLibrary,
-		PicturesLibrary,
-		VideosLibrary,
-		Objects3D,
-		Unspecified,
-	}
+		// to juz jest w Uno
+		//public enum PickerLocationId
+		//{
+		//	DocumentsLibrary,
+		//	ComputerFolder,
+		//	Desktop,
+		//	Downloads,
+		//	HomeGroup,
+		//	MusicLibrary,
+		//	PicturesLibrary,
+		//	VideosLibrary,
+		//	Objects3D,
+		//	Unspecified,
+		//}
 
 
 	#endregion
 
+#endif
+	
 	#region "Permissions"
 
 	internal class AndroidHelpers
 	{
-        #region "Permissions"
+	#region "Permissions"
         private static TaskCompletionSource<bool> _permissionCompletionSource;
 
 		/// <summary>
@@ -1735,17 +1749,17 @@ namespace BeforeUno
 			{
 				foreach (string permission in requiredPermissions)
 				{
-					bool foundInManifest = false;
-					foreach (string oPerm in manifestPermissions)
-					{
-						if (oPerm.Equals(permission, StringComparison.OrdinalIgnoreCase))
-							foundInManifest = true;
-
-					}
-					if (!foundInManifest) return null;
+					// częsciowo wykorzystuję to co jest wprowadzone do Uno
+					if (!Windows.Extensions.PermissionsHelper.IsDeclaredInManifest(permission)) return null;
+					//bool foundInManifest = false;
+					//foreach (string oPerm in manifestPermissions)
+					//{
+					//	if (oPerm.Equals(permission, StringComparison.OrdinalIgnoreCase))
+					//		foundInManifest = true;
+					//}
+					//if (!foundInManifest) return null;
 				}
 			}
-
 			// prepare list of all permissions
 			var allPermissions = new List<string>();
 			if (requiredPermissions != null)
@@ -1770,7 +1784,8 @@ namespace BeforeUno
 			// check if permission is granted
 			foreach (var permission in allPermissions)
 			{
-				if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(context, permission)
+				// było inaczej, z v4 :)
+				if (AndroidX.Core.Content.ContextCompat.CheckSelfPermission(context, permission)
 						!= Android.Content.PM.Permission.Granted)
 				{
 					askForPermission.Add(permission);
@@ -1862,9 +1877,9 @@ namespace BeforeUno
 			}
 
 		}
-        #endregion 
+	#endregion
 
-        #region "InvokeIntentAsync"
+	#region "InvokeIntentAsync"
         private static TaskCompletionSource<bool> _intentCompletionSource;
 		/// <summary>
 		/// Run Android Intent, and wait for its end (no return value!)
@@ -1885,6 +1900,8 @@ namespace BeforeUno
 			_intentCompletionSource = new TaskCompletionSource<bool>();
 			InvokeIntentActivity.AfterHandler += InvokeIntentHandler;
 			InvokeIntentActivity.intentToInvoke = intent;
+			var flags = intent.Flags;
+			intent.AddFlags(Android.Content.ActivityFlags.NewTask);
 
 			var intermediaryIntent = new Android.Content.Intent(Android.App.Application.Context, typeof(InvokeIntentActivity));
 			Android.App.Application.Context.StartActivity(intermediaryIntent);
@@ -1919,13 +1936,14 @@ namespace BeforeUno
 			}
 
 		}
+
+		#endregion
 	}
 
-    #endregion 
 
-	
 
 	#endregion
+
 }
 
 

@@ -4,6 +4,53 @@
 * wersja export XML?
 
 
+========================== MMS	MMS	MMS	MMS	MMS ===============
+MMSy:
+MMS z samym tekstem.
+
+
+
+messageoperatorkind = mms
+body jest puste ""
+subject = "MMS"
+
+
+2
+?oMsg.Attachments.ElementAt(0)
+{Windows.ApplicationModel.Chat.ChatMessageAttachment}
+    DataStreamReference: {Windows.Storage.Streams.RandomAccessStreamReference}
+    GroupId: 4294967295
+    MimeType: "application/smil"
+    OriginalFileName: ""
+    Text: ""
+    Thumbnail: {Windows.Storage.Streams.RandomAccessStreamReference}
+    TransferProgress: 0
+    Native View: To inspect the native object, enable native code debugging.
+
+
+?oMsg.Attachments.ElementAt(1)
+{Windows.ApplicationModel.Chat.ChatMessageAttachment}
+    DataStreamReference: {Windows.Storage.Streams.RandomAccessStreamReference}
+    GroupId: 0
+    MimeType: "text/plain"
+    OriginalFileName: ""
+    Text: "a mogłam,mogłam.  jak i najpewniej wieeelu innych :/...  ale przynajmniej  już wiem,ze jest jeszcze coś potencjalnie fajnego do obejrzenia :)...  Ano poszłam byłam,  kuchnia łazieneczka, padłam spać też.  Biorę się teraz do robot roznych,przygotowania na spokojnie  lekcji na skypea,trzeba się skupić, coby się nie denerwować do wieczornego  wyniku  :(.  miłej środy. "
+    Thumbnail: {Windows.Storage.Streams.RandomAccessStreamReference}
+    TransferProgress: 0
+    Native View: To inspect the native object, enable native code debugging.
+
+
+Dostep do czegokolwiek w ChatMessageAttachment:
+This API is not available to all Windows/Windows Phone apps. Unless your developer account is specially provisioned by Microsoft, calls to these APIs will fail at runtime.
+
+SMIL:
+"<smil>\r\n<head>\r\n<layout>\r\n<root-layout width=\"240\" height=\"160\" />\r\n<region id=\"Image\" width=\"100%\" height=\"70%\" left=\"0%\" top=\"0%\" fit=\"meet\" />\r\n<region id=\"Text\" width=\"100%\" height=\"30%\" left=\"0%\" top=\"70%\" />\r\n</layout>\r\n</head>\r\n<body>\r\n<par dur=\"5000ms\">\r\n<text src=\"text_0.txt\" region=\"Text\" ></text>\r\n</par>\r\n</body>\r\n</smil>\r\n"
+TXT:
+"a mogłam,mogłam.  jak i najpewniej wieeelu innych :/...  ale przynajmniej  już wiem,ze jest jeszcze coś potencjalnie fajnego do obejrzenia :)...  Ano poszłam byłam,  kuchnia łazieneczka, padłam spać też.  Biorę się teraz do robot roznych,przygotowania na spokojnie  lekcji na skypea,trzeba się skupić, coby się nie denerwować do wieczornego  wyniku  :(.  miłej środy. "
+
+
+========================== UNO	UNO	UNO	UNO	UNO ===============
+
 
 Uno nie ma:
 * Background Timer

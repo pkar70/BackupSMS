@@ -5,6 +5,7 @@ using System.Linq;
 //using System.Runtime.InteropServices.WindowsRuntime;
 //using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
+using Windows.ApplicationModel.DataTransfer;
 //using Windows.Foundation;
 //using Windows.Foundation.Collections;
 using Windows.UI.Xaml;
@@ -34,12 +35,7 @@ namespace BackupSMS
         }
 
 
-        /// <summary>
-        /// Invoked when the application is launched normally by the end user.  Other entry points
-        /// will be used such as when the application is launched to open a specific file.
-        /// </summary>
-        /// <param name="e">Details about the launch request and process.</param>
-        protected override void OnLaunched(LaunchActivatedEventArgs e)
+        private Frame OnLaunchFragment(ApplicationExecutionState aes)
         {
             Frame rootFrame = Window.Current.Content as Frame;
 
@@ -52,16 +48,31 @@ namespace BackupSMS
 
                 rootFrame.NavigationFailed += OnNavigationFailed;
 
+                // BackupSMS nie ma cofania, więc tego nie potrzebuję
+                // ' PKAR added wedle https://stackoverflow.com/questions/39262926/uwp-hardware-back-press-work-correctly-in-mobile-but-error-with-pc
+                //    rootFrame.Navigated += OnNavigatedAddBackButton;
+                //Windows.UI.Core.SystemNavigationManager.GetForCurrentView().BackRequested += OnBackButtonPressed;
+
                 // Place the frame in the current Window
                 Window.Current.Content = rootFrame;
             }
 
-#if NETFX_CORE
-            if (e != null && e.PrelaunchActivated == true) return;
-#endif
+            return rootFrame;
+        }
 
-            //if (e.PrelaunchActivated == false)
-            //{
+        /// <summary>
+        /// Invoked when the application is launched normally by the end user.  Other entry points
+        /// will be used such as when the application is launched to open a specific file.
+        /// </summary>
+        /// <param name="e">Details about the launch request and process.</param>
+        protected override void OnLaunched(LaunchActivatedEventArgs e)
+        {
+            Frame rootFrame = OnLaunchFragment(e.PreviousExecutionState);
+
+            if (e != null && e.PrelaunchActivated == true) return;
+
+            if (e.PrelaunchActivated == false)
+            {
                 if (rootFrame.Content == null)
                 {
                     // When the navigation stack isn't restored navigate to the first page,
@@ -71,7 +82,7 @@ namespace BackupSMS
                 }
                 // Ensure the current window is active
                 Window.Current.Activate();
-            //}
+            }
         }
 
         /// <summary>
@@ -84,82 +95,213 @@ namespace BackupSMS
             throw new Exception("Failed to load Page " + e.SourcePageType.FullName);
         }
 
+        protected override async void OnActivated(IActivatedEventArgs args)
+        {
+            //' to jest m.in. dla Toast i tak dalej?
 
+            //' próba czy to commandline
+            if (args.Kind == ActivationKind.CommandLineLaunch)
+            {
+                CommandLineActivatedEventArgs commandLine = args as CommandLineActivatedEventArgs;
+                CommandLineActivationOperation operation = commandLine?.Operation;
+                string strArgs = operation?.Arguments;
+
+                if (!string.IsNullOrEmpty(strArgs))
+                {
+                    await ObsluzCommandLine(strArgs);
+                    Window.Current.Close();
+                    return;
+                }
+            }
+
+            // ' jesli nie cmdline (a np. toast), albo cmdline bez parametrow, to pokazujemy okno
+            Frame rootFrame = OnLaunchFragment(args.PreviousExecutionState);
+
+            //if (args.Kind == ActivationKind.ToastNotification)
+            //    rootFrame.Navigate(GetType(PknPublic));
+            //else
+            rootFrame.Navigate(typeof(MainPage));
+
+            Window.Current.Activate();
+
+        }
         #endregion
 
-        private static void IntLogAppend(string sStr)
-        {
-            System.Diagnostics.Debug.Write("PKAR " + sStr);
-        }
 
+        #region "remsys/cmd line, w VB to jest w Common"
 
-
-        public static async System.Threading.Tasks.Task DodajTriggerPolnocny()
-        {
-
-            IntLogAppend("DodajTriggerPolnocny - START");
-            Windows.ApplicationModel.Background.BackgroundAccessStatus oBAS;
-            oBAS = await Windows.ApplicationModel.Background.BackgroundExecutionManager.RequestAccessAsync();
-
-            if ((oBAS == Windows.ApplicationModel.Background.BackgroundAccessStatus.AlwaysAllowed) | 
-                (oBAS == Windows.ApplicationModel.Background.BackgroundAccessStatus.AllowedSubjectToSystemPolicy))
-            {
-                // ' https://docs.microsoft.com/en-us/windows/uwp/launch-resume/create-And-register-an-inproc-background-task
-
-                // IntLogAppend("DTS - removing tasks")
-                // po co, skoro OneShot?
-                // For Each oTask In BackgroundTaskRegistration.AllTasks
-                // If oTask.Value.Name = "PKARsmsBackup_Daily" Then oTask.Value.Unregister(True)
-                // Next
-
-                IntLogAppend("DTS - building task");
-                Windows.ApplicationModel.Background.BackgroundTaskBuilder builder = new Windows.ApplicationModel.Background.BackgroundTaskBuilder();
-                Windows.ApplicationModel.Background.BackgroundTaskRegistration oRet;
-
-                IntLogAppend("DTS - calculating mins");
-                // Dim oDate1 = Date.Now.AddHours(1).AddDays(1)    ' 1h - zeby na nastepną dobę, +1 dzien (bez +1h by trafiał na 20 minut pozniej!)
-                // Dim oDate0 = New Date(oDate1.Year, oDate1.Month, oDate1.Day)    ' polnoc
-                // oDate0 = oDate0.AddMinutes(-20)
-                // Dim oDate0 = New Date(oDate1.Year, oDate1.Month, oDate1.Day)    ' polnoc
-                DateTime oDateMew;
-                if (DateTime.Now.Hour > 20)
-                    oDateMew = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 23, 40, 0).AddDays((double)1);
-                else
-                    oDateMew = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 23, 40, 0);// DZIS
-
-                int iMin = (int)(oDateMew - DateTime.Now).TotalMinutes;
-                IntLogAppend(" waiting mins:" + iMin.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                // Dim iMin = (24 * 60) - 20    ' 24 godziny po 60 minut bez 20 minut; czyli czas uruchomienia
-                // iMin -= Date.Now.Hour() * 60  ' odjąć aktualny czas
-                // iMin -= Date.Now.Minute()
-
-                builder.SetTrigger(new Windows.ApplicationModel.Background.TimeTrigger((uint)iMin, true));
-                builder.Name = "PKARsmsBackup_Daily";
-                oRet = builder.Register();
-            }
-            else
-                IntLogAppend("DTS - oBAS.Status = " + oBAS.ToString());
-            // return default(Task);
-
-        }
+        private Windows.ApplicationModel.AppService.AppServiceConnection moAppConn;
+        private string msLocalCmdsHelp = "";
 
 #if NETFX_CORE
-        private Windows.ApplicationModel.Background.BackgroundTaskDeferral moTimerDeferal = null;
+        private void RemSysOnServiceClosed(Windows.ApplicationModel.AppService.AppServiceConnection appCon, Windows.ApplicationModel.AppService.AppServiceClosedEventArgs args)
+        {
+            if (appCon != null) appCon.Dispose();
+            if (moTaskDeferal != null)
+            {
+                moTaskDeferal.Complete();
+                moTaskDeferal = null;
+            }
+        }
+
+        private void RemSysOnTaskCanceled(Windows.ApplicationModel.Background.IBackgroundTaskInstance sender, Windows.ApplicationModel.Background.BackgroundTaskCancellationReason reason)
+        {
+            if (moTaskDeferal != null)
+            {
+                moTaskDeferal.Complete();
+                moTaskDeferal = null;
+            }
+        }
+
+#endif 
+
+        /// <summary>
+        /// do sprawdzania w OnBackgroundActivated
+        /// jak zwróci True, to znaczy że nie wolno zwalniać moTaskDeferal !
+        /// sLocalCmdsHelp: tekst do odesłania na HELP
+        /// </summary>
+        public bool RemSysInit(BackgroundActivatedEventArgs args, string sLocalCmdsHelp)
+        {
+#if NETFX_CORE
+            Windows.ApplicationModel.AppService.AppServiceTriggerDetails oDetails =
+                args.TaskInstance.TriggerDetails as Windows.ApplicationModel.AppService.AppServiceTriggerDetails;
+            if (oDetails is null) return false;
+
+            msLocalCmdsHelp = sLocalCmdsHelp;
+
+            args.TaskInstance.Canceled += RemSysOnTaskCanceled;
+            moAppConn = oDetails.AppServiceConnection;
+            moAppConn.RequestReceived += RemSysOnRequestReceived;
+            moAppConn.ServiceClosed += RemSysOnServiceClosed;
+
+            return true;
+#else
+            return false;
+#endif 
+        }
+
+        public async System.Threading.Tasks.Task<string> CmdLineOrRemSys(string sCommand)
+        {
+            string sResult = "";
+
+            sResult = p.k.AppServiceStdCmd(sCommand, msLocalCmdsHelp);
+            if (string.IsNullOrEmpty(sResult))
+                sResult = await AppServiceLocalCommand(sCommand);
+
+            return sResult;
+        }
+        public async System.Threading.Tasks.Task ObsluzCommandLine(string sCommand)
+        {
+            Windows.Storage.StorageFolder oFold = Windows.Storage.ApplicationData.Current.TemporaryFolder;
+            if (oFold is null) return;
+
+            Windows.Storage.StorageFile oLock = await oFold.CreateFileAsync("cmdline.lock", Windows.Storage.CreationCollisionOption.ReplaceExisting);
+            if (oLock is null) return;
+
+            string sResult = await CmdLineOrRemSys(sCommand);
+            if (string.IsNullOrEmpty(sResult)) sResult = "(empty - probably unrecognized command)";
+
+            Windows.Storage.StorageFile oResFile = await oFold.CreateFileAsync("stdout.txt", Windows.Storage.CreationCollisionOption.ReplaceExisting);
+            if (oResFile is null) return;
+
+            await oResFile.WriteAllTextAsync(sResult);
+
+            await oLock.DeleteAsync();
+        }
+#if NETFX_CORE
+        private async void RemSysOnRequestReceived(Windows.ApplicationModel.AppService.AppServiceConnection sender, Windows.ApplicationModel.AppService.AppServiceRequestReceivedEventArgs args)
+        {
+            // 'Get a deferral so we can use an awaitable API to respond to the message
+
+            string sStatus;
+            string sResult = "";
+            Windows.ApplicationModel.AppService.AppServiceDeferral messageDeferral = args.GetDeferral();
+
+            if (p.k.GetSettingsBool("remoteSystemDisabled"))
+                sStatus = "No permission";
+            else
+            {
+
+                Windows.Foundation.Collections.ValueSet oInputMsg = args.Request.Message;
+
+                sStatus = "ERROR while processing command";
+
+                if (oInputMsg.ContainsKey("command"))
+                {
+
+                    string sCommand = oInputMsg["command"].ToString();
+                    sResult = await CmdLineOrRemSys(sCommand);
+                }
+
+                if (sResult != "") sStatus = "OK";
+
+            }
+
+            Windows.Foundation.Collections.ValueSet oResultMsg = new Windows.Foundation.Collections.ValueSet();
+            oResultMsg.Add("status", sStatus);
+            oResultMsg.Add("result", sResult);
+
+            await args.Request.SendResponseAsync(oResultMsg);
+
+            messageDeferral.Complete();
+            moTaskDeferal.Complete();
+
+        }
 #endif
+
+#endregion
+
+
+        private Windows.ApplicationModel.Background.BackgroundTaskDeferral moTaskDeferal = null;
 
         protected override async void OnBackgroundActivated(BackgroundActivatedEventArgs args)
-        {
-#if NETFX_CORE
-            moTimerDeferal = args.TaskInstance.GetDeferral();
-#endif
-            IntLogAppend("OnBackActiv - START");
-            DateTime oDate = DateTime.Now.AddHours((double)-DateTime.Now.Hour - 1);
-            await WyciagnijSMS(oDate, true, false, null, "");
-            await DodajTriggerPolnocny();
-#if NETFX_CORE
-            moTimerDeferal.Complete();
-#endif
+        { // timer, RemoteSystem
+            moTaskDeferal = args.TaskInstance.GetDeferral();
 
+            //p.k.CrashMessageAdd("OnBackgroundActivated");
+
+            bool bNoComplete = false;
+            bool bObsluzone = false;
+
+            if (p.k.IsThisTriggerPolnocny(args))
+            {
+                //p.k.CrashMessageAdd("OnBackgroundActivated - IsThisTriggerPolnocny");
+
+                if (!p.k.GetSettingsBool("noSDcard", true))
+                {
+                    //p.k.CrashMessageAdd("OnBackgroundActivated - have SD");
+                    DateTime oDate = DateTime.Now.AddDays(-1); // .AddHours((double)-DateTime.Now.Hour - 1);
+                    await WyciagnijSMS(oDate, true, false, null, "");
+                    //p.k.CrashMessageAdd("OnBackgroundActivated - po wyciagnij");
+                }
+                bObsluzone = true;
+            }
+
+            // lista komend danej aplikacji
+            string sLocalCmds = "save day \t save data from this day\n" +
+                "save since \t save data since last save\n" +
+            "save all \t save all data\n";
+
+            if (!bObsluzone) bNoComplete = RemSysInit(args, sLocalCmds);
+
+            if(!bNoComplete) moTaskDeferal.Complete();
+
+        }
+
+        private async System.Threading.Tasks.Task<string> AppServiceLocalCommand(string sCommand)
+        {
+            switch(sCommand.ToLower())
+            {
+                case "save day":
+                    DateTime oDate = DateTime.Now.AddHours((double)-DateTime.Now.Hour - 1);
+                    await WyciagnijSMS(oDate, true, false, null, "");
+                    return "DONE";
+                case "save since":
+                    return sCommand.ToLower() + " unimplemented yet";
+                case "save all":
+                    return sCommand.ToLower() + " unimplemented yet";
+            }
+            return "ERROR Unrecognized command"; 
         }
 
         // własny cache, 2020.01.29
@@ -205,7 +347,8 @@ namespace BackupSMS
             return sName;
         }
 
-
+#if false
+        // poprzednia wersja, teraz to jest w pkmodule
         public static async System.Threading.Tasks.Task<Windows.Storage.StorageFolder> GetSDcardFolder()
         {
             try
@@ -227,61 +370,60 @@ namespace BackupSMS
         }
 
 
+        private static async System.Threading.Tasks.Task<Windows.Storage.StorageFolder> GetFolderForBackup(TextBlock uiMsgCnt)
+        {
+            Windows.Storage.StorageFolder sdCard = await GetSDcardFolder();
+
+            if (sdCard == null)
+            {
+                if (uiMsgCnt != null)
+                    uiMsgCnt.Text = "Cannot save - no SD card?";
+                return null;    // error - nie ma karty
+            }
+
+            Windows.Storage.StorageFolder oFold = await sdCard.CreateFolderAsync("DataLogs", Windows.Storage.CreationCollisionOption.OpenIfExists);
+            oFold = await oFold?.CreateFolderAsync("BackupSMS", Windows.Storage.CreationCollisionOption.OpenIfExists);
+            oFold = await oFold?.CreateFolderAsync(DateTime.Now.ToString("yyyy"), Windows.Storage.CreationCollisionOption.OpenIfExists);
+            oFold = await oFold?.CreateFolderAsync(DateTime.Now.ToString("MM"), Windows.Storage.CreationCollisionOption.OpenIfExists);
+
+            return oFold;
+        }
+#endif 
+
+        private static Windows.Storage.StorageFile oLastExportFile = null;
+        private static string sLastExportFileContent = "";
+
         public static async System.Threading.Tasks.Task<int> WyciagnijSMS(DateTime oDate, bool bInTimer, bool bShowSince, TextBlock uiMsgCnt, string sSufix)
         {
-            IntLogAppend("WyciagnijSMS - START");
-            // Dim oTextBox As TextBlock = Nothing
+            //p.k.CrashMessageAdd("WyciagnijSMS - START");
+            Windows.Storage.StorageFolder oFold = await p.k.GetLogFolderMonthAsync(true);            // GetFolderForBackup(uiMsgCnt);
+            if (oFold is null)
+            {
+                if(uiMsgCnt != null) uiMsgCnt.Text = "Cannot save - no folder?";
+                return -1; //error
+            }
 
-            // Try
-
-            // If Not bInTimer Then
-            // IntLogAppend("WSMS - not timer")
-            // ' znajdz control o nazwie uiMsgCnt
-            // Dim oStackPanel As StackPanel = TryCast(TryCast(TryCast(Window.Current.Content, Frame).Content.Content, Grid).Children(0), StackPanel)
-            // For Each oChld As UIElement In oStackPanel.Children
-            // Dim oTmp As TextBlock = TryCast(oChld, TextBlock)
-            // If oTmp IsNot Nothing Then
-            // If oTmp.Name = "uiMsgCnt" Then
-            // oTextBox = oTmp
-            // Exit For
-            // End If
-            // End If
-            // Next
-            // End If
-            // Catch ex As Exception
-            // ' w razie błędu oTextBox bedzie = Nothing, ale nie wyleci program
-            // End Try
-
-            // If uiProcesuje IsNot Nothing Then
-            // uiProcesuje.Visibility = Visibility.Visible
-            // uiProcesuje.IsActive = True
-            // End If
 
             int iRet = -1;
+            int iMMSattNum = 1; // numer attachmentu MMS
+            string sMMSattFolder = "MMS-" + DateTime.Now.ToString("yyyy.MM.dd-HH.mm"); // folder dla MMS attachments
 
             bool bError = false;
-#if NETFX_CORE
             Windows.ApplicationModel.Chat.ChatMessageReader oRdr = null;
-#else
-            BeforeUno.ChatMessageReader oRdr = null;
-#endif 
+
             try
             {
-#if NETFX_CORE
                 Windows.ApplicationModel.Chat.ChatMessageStore oStore = await Windows.ApplicationModel.Chat.ChatMessageManager.RequestStoreAsync();
-#else
-                BeforeUno.ChatMessageStore oStore = await BeforeUno.ChatMessageManager.RequestStoreAsync();
-#endif
                 if (oStore == null)
                 {
                     if (uiMsgCnt != null) p.k.DialogBox("No permission (or this is not a phone)");
                     return -1;
                 }
 
-                IntLogAppend("WSMS - got oStore");
+                //p.k.CrashMessageAdd("WSMS - got oStore");
                 
                 oRdr = oStore.GetMessageReader();
-                IntLogAppend("WSMS - got oRdr");
+                //p.k.CrashMessageAdd("WSMS - got oRdr");
             }
             catch 
             {
@@ -292,23 +434,19 @@ namespace BackupSMS
             {
                 if (uiMsgCnt != null)
                     uiMsgCnt.Text = "ERROR - check permissions?";
-                // If uiProcesuje IsNot Nothing Then
-                // uiProcesuje.Visibility = Visibility.Visible
-                // uiProcesuje.IsActive = True
-                // End If
                 return -1;
             }
 
             string sTxt = "";
             int iGuard = 0;
+            bool bStop = false;
 
             int iLastRunCnt = p.k.GetSettingsInt("lastRunCnt");
             string sLastRun = "";
             if (bShowSince && iLastRunCnt > 0)
                 sLastRun = " (/" + iLastRunCnt.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")";
 
-
-            while (iGuard < 10000)
+            while (iGuard < 10000 && !bStop)
             {
                 iGuard = iGuard + 1;
                 if (uiMsgCnt != null)
@@ -316,29 +454,40 @@ namespace BackupSMS
                     string sTmp = "batch " + iGuard.ToString(System.Globalization.CultureInfo.InvariantCulture) + sLastRun;
                     uiMsgCnt.Text = sTmp;
                 }
-                IntLogAppend("WSMS - loop, iGuard=" + iGuard);
+                //p.k.CrashMessageAdd("WSMS - loop, iGuard=" + iGuard);
 
                 System.Collections.Generic.IReadOnlyList<Windows.ApplicationModel.Chat.ChatMessage> oMsgList; // = default(IReadOnlyList<ChatMessage>);
                 try     // Try dodane 20190223
                 {
                     oMsgList = await oRdr.ReadBatchAsync();
                 }
-                catch 
+                catch(Exception ex)
                 {
+                    p.k.CrashMessageAdd("ReadBatchAsync ERROR: ", ex);
                     if (uiMsgCnt != null)
                         uiMsgCnt.Text = "ERROR - check permissions?";
-                    // If uiProcesuje IsNot Nothing Then
-                    // uiProcesuje.Visibility = Visibility.Visible
-                    // uiProcesuje.IsActive = True
-                    // End If
                     return -1;
                 }
 
                 if (oMsgList.Count < 1)
                     break;
+
                 // Folder	From	FromAddress	To	ToAddress	Date	Message
+
                 foreach (Windows.ApplicationModel.Chat.ChatMessage oMsg in oMsgList)
                 {
+
+                    try
+                    {
+
+
+                    // 2021.05.09: przeniosłem z końca tej pętli
+                    if (oMsg.LocalTimestamp < oDate)
+                    {
+                        bStop = true;
+                        break;
+                    }
+
                     if (oMsg.IsIncoming)
                         sTxt = sTxt + "Inbox|";
                     else
@@ -375,16 +524,89 @@ namespace BackupSMS
                     {
                     }
 
+#if NETFX_CORE
+                    if (oMsg.MessageOperatorKind == Windows.ApplicationModel.Chat.ChatMessageOperatorKind.Mms)
+                    {// 2020.10.28 - ale w Store nie zadziała!, zas na moim telefonie - moze sie uda
+                     // This API is not available to all Windows/Windows Phone apps. Unless your developer account is specially provisioned by Microsoft, calls to these APIs will fail at runtime
+
+                            try
+                            {
+                            if (oMsg.Attachments != null)   // to jeszze byc moze zawsze by zadziałało...
+                            {
+                                foreach (Windows.ApplicationModel.Chat.ChatMessageAttachment oAtt in oMsg.Attachments)
+                                {
+                                    string sTresc="";
+
+                                    switch (oAtt.MimeType)
+                                    {
+                                        case "application/smil":
+                                            // ignorujemy, choc mozna byloby czytac jak text/plain
+                                            break;
+                                        case "text/plain":
+                                            { // to pozwala zdefiniowac oStream, oBuffer niezaleznie w kazdym CASE
+                                                var oStream = (await oAtt.DataStreamReference.OpenReadAsync());
+                                                var oBuffer = new Windows.Storage.Streams.Buffer((uint)oStream.Size + 10); // niby powinno wystarczyc...
+                                                var oBuffOut = await oStream.ReadAsync(oBuffer, oBuffer.Capacity, Windows.Storage.Streams.InputStreamOptions.None).AsTask();
+                                                var oMmsRdr = Windows.Storage.Streams.DataReader.FromBuffer(oBuffOut);
+                                                oMmsRdr.UnicodeEncoding = Windows.Storage.Streams.UnicodeEncoding.Utf16LE;
+                                                sTresc = oMmsRdr.ReadString(oMmsRdr.UnconsumedBufferLength / 2); // z BYTE na UTF16
+                                                oMmsRdr.Dispose();
+                                                oStream.Dispose();
+                                            }
+                                            break;
+                                        case "image/jpeg":
+                                            {
+                                                var oStream = (await oAtt.DataStreamReference.OpenReadAsync());
+                                                var oBuffer = new Windows.Storage.Streams.Buffer((uint)oStream.Size + 10); // niby powinno wystarczyc...
+                                                var oBuffOut = await oStream.ReadAsync(oBuffer, oBuffer.Capacity, Windows.Storage.Streams.InputStreamOptions.None).AsTask();
+
+                                                
+                                                string sFilename = iMMSattNum.ToString("000#") + ".jpg";
+                                                iMMSattNum = iMMSattNum + 1;
+
+                                                var oMMsFold = await oFold.CreateFolderAsync(sMMSattFolder, Windows.Storage.CreationCollisionOption.OpenIfExists);
+                                                var oMmsFile = await oMMsFold?.CreateFileAsync(sFilename);
+                                                await Windows.Storage.FileIO.WriteBufferAsync(oMmsFile, oBuffer);
+
+                                                sTresc = " picture: " + sFilename + " ";
+
+                                            }
+                                            break;
+                                        default:
+                                            sTresc = " attachment, MIME: " + oAtt.MimeType + " FILENAME: " + oAtt.OriginalFileName;
+                                            break;
+                                    }
+                                    sTxt = sTxt + "MMS: " + sTresc.Replace("\n", "\\n");
+
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            //p.k.CrashMessageAdd("MMS",ex);
+                        }
+
+
+
+                    }
+#endif
+
                     // <Message><Recepients /><Body>A jak chcesz spędzić ten czas.</Body><IsIncoming>true</IsIncoming><IsRead>true</IsRead><Attachments /><LocalTimestamp>131606927899116393</LocalTimestamp><Sender>+48531346962</Sender></Message>
 
                     // 20190825: sTxt += oMsg.Body + "\n"; // Constants.vbCrLf;
                     sTxt += "\n";
                     iRet++;
 
-                    if (oMsg.LocalTimestamp < oDate)
-                        break;
-                }
-            }
+                    }
+                    catch (Exception ex)
+                    {
+
+                        p.k.CrashMessageAdd("WyciagnijSMS - iterate batch", ex);
+                    }
+
+                } // foreach(msg in batch)
+
+            } // while(read batch)
 
             if (bShowSince)
                 p.k.SetSettingsInt("lastRunCnt", iGuard);
@@ -392,41 +614,33 @@ namespace BackupSMS
             if (uiMsgCnt != null)
                 uiMsgCnt.Text = "Saving...";
 
-            Windows.Storage.StorageFolder sdCard = await GetSDcardFolder();
-
-            if (sdCard == null)
-            {
-                if (uiMsgCnt != null)
-                    uiMsgCnt.Text = "Cannot save - no SD card?";
-                // If uiProcesuje IsNot Nothing Then
-                // uiProcesuje.Visibility = Visibility.Visible
-                // uiProcesuje.IsActive = True
-                // End If
-                return -1;    // error - nie ma karty
-            }
-
-            Windows.Storage.StorageFolder oFold = await sdCard.CreateFolderAsync("DataLogs", Windows.Storage.CreationCollisionOption.OpenIfExists);
-            if (oFold == null)
-                return -1;
-            oFold = await oFold.CreateFolderAsync("BackupSMS", Windows.Storage.CreationCollisionOption.OpenIfExists);
-            if (oFold == null)
-                return -1;
-            oFold = await oFold.CreateFolderAsync(DateTime.Now.ToString("yyyy"), Windows.Storage.CreationCollisionOption.OpenIfExists);
-            if (oFold == null)
-                return -1;
-            oFold = await oFold.CreateFolderAsync(DateTime.Now.ToString("MM"), Windows.Storage.CreationCollisionOption.OpenIfExists);
-            if (oFold == null)
-                return -1;
+            //p.k.CrashMessageAdd("saving...");
 
             string sFile = "SMS " + DateTime.Now.ToString("yyyy.MM.dd-HH.mm.ss") + ".csv";
-            Windows.Storage.StorageFile oFile = await oFold.CreateFileAsync(sFile, Windows.Storage.CreationCollisionOption.OpenIfExists);
-            await Windows.Storage.FileIO.WriteTextAsync(oFile, sTxt);
+            oLastExportFile = await oFold.CreateFileAsync(sFile, Windows.Storage.CreationCollisionOption.OpenIfExists);
+            await Windows.Storage.FileIO.WriteTextAsync(oLastExportFile, sTxt);
 
             if (uiMsgCnt != null)
+            {
                 uiMsgCnt.Text = "Saved " + iRet.ToString(System.Globalization.CultureInfo.InvariantCulture) + " messages.";
 
+                if (p.k.GetSettingsBool("noSDcard", true))
+                { // gdy nie ma karty SD, to robimy Share
+                    sLastExportFileContent = sTxt;
+                    Windows.ApplicationModel.DataTransfer.DataTransferManager.GetForCurrentView().DataRequested += SzarnijDane;
+                    Windows.ApplicationModel.DataTransfer.DataTransferManager.ShowShareUI();
+                }
+            }
+
             return iRet;
-            //return default(Task);
+            
+        }
+
+        private static void SzarnijDane(DataTransferManager sender, DataRequestedEventArgs args)
+        {
+            args.Request.Data.SetText(sLastExportFileContent);
+            args.Request.Data.Properties.Title = Windows.ApplicationModel.Package.Current.DisplayName;
+            sLastExportFileContent = "";
         }
     }
 }

@@ -1,6 +1,16 @@
 ﻿/*
 
- STORE 10.2004
+STORE
+
+2021.05.09
+* export (z guziczków) jest albo na SD, albo do własnego - i wtedy jest Share
+* po export zmienia się treść guziczka Since
+
+2021.04.27
+* TriggerPolnocny - z App.xaml.cs do pkmoduleshared (trochę inna logika działania, nie przeszkadza mu już PowerSaving mode)
+* info o trigger bierze z trigger, a nie z Settings
+
+STORE 10.2004
 
 2020.03.11
 * dodałem pkModuleShared, wyrzucając z App.cs swoje biblioteki (dialogi, settingsy)
@@ -68,6 +78,13 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
+#if __ANDROID__
+using Chat = BeforeUno;
+#else
+using Chat = Windows.ApplicationModel.Chat;
+#endif 
+
+
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
 namespace BackupSMS
@@ -87,77 +104,65 @@ namespace BackupSMS
 
 
         #region "UIhandlers"
-        private void GuzikiEnable(bool bIsEnabled)
+        private void GuzikiEnable(bool bIsEnabled, int iMax = 100)
         {
             uiReadDay.IsEnabled = bIsEnabled;
             uiReadAll.IsEnabled = bIsEnabled;
             uiReadSinceLast.IsEnabled = bIsEnabled;
             uiImport.IsEnabled = bIsEnabled;
             uiImportSinceLast.IsEnabled = bIsEnabled;
-#if __ANDROID__
-            // powtórka - bo teraz może już będzie znało rozmiary
-            double dVal;
-            dVal = (Math.Min(uiGrid.ActualHeight, uiGrid.ActualWidth)) / 2;
-            // for Android
-            if (dVal < 1) dVal = 100;
 
-            uiProcesuje.Width = dVal;
-            uiProcesuje.Height = dVal;
-
-#endif 
-            uiProcesuje.Visibility = bIsEnabled ? Visibility.Collapsed : Visibility.Visible;
-            uiProcesuje.IsActive = !bIsEnabled;
+            p.k.ProgRingShow(!bIsEnabled, false, 0, iMax);
         }
-        private async void uiRUn_Click(object sender, RoutedEventArgs e)
+
+        
+        private async System.Threading.Tasks.Task<int> ExportSMSwrapper(DateTime oDate, bool bShowSince, string sSufix)
         {
-            if (!await AndroidAskPermissiona()) return;
+            if (!await AndroidAskPermissiona()) return -1;
 
             GuzikiEnable(false);
-            int iCnt = await App.WyciagnijSMS(new DateTime(1999, 1, 1), false, true, uiMsgCnt, "full");
+            int iCnt = await App.WyciagnijSMS(oDate, false, bShowSince, uiMsgCnt, sSufix);
             uiMsgCnt.Text = "";
-            SetLastDate(false);
+            if (bShowSince)
+            {
+                SetLastDate(false);
+                UstawSince();
+            }
             GuzikiEnable(true);
+            return iCnt;
+        }
+
+        private async void uiRUn_Click(object sender, RoutedEventArgs e)
+        {
+            int iCnt = await ExportSMSwrapper(new DateTime(1999, 1, 1), true, "full");
             //if (iCnt > 0) App.DialogBox("Saved " + iCnt.ToString() + " messages.");
         }
 
         private async void uiRunDay_Click(object sender, RoutedEventArgs e)
         {
-            if (!await AndroidAskPermissiona()) return;
-
-            GuzikiEnable(false);
-            DateTime oDate = DateTime.Now.AddHours((double)-DateTime.Now.Hour - 1);
-            await App.WyciagnijSMS(oDate, false, false, uiMsgCnt, "");
-            uiMsgCnt.Text = "";
-            GuzikiEnable(true);
+            DateTime oDate = DateTime.Now.AddDays(-1); // Hours((double)-DateTime.Now.Hour - 1);
+            int iCnt = await ExportSMSwrapper(oDate, false, "");
         }
 
         private async void uiRunSince_Click(object sender, RoutedEventArgs e)
         {
-            if (!await AndroidAskPermissiona()) return;
-
-            GuzikiEnable(false);
-            int iCnt = await App.WyciagnijSMS(GetLastDate(false), false, false, uiMsgCnt, "since");
-            uiMsgCnt.Text = "";
-            SetLastDate(false);
-            GuzikiEnable(true);
+            int iCnt = await ExportSMSwrapper(GetLastDate(false), false, "since");
             //if (iCnt > 0) App.DialogBox("Saved " + iCnt.ToString() + " messages.");
         }
 
         private async void uiAutoChange_Toggle(object sender, RoutedEventArgs e)
-        { // obsluga timerowa i praca w tle tylko pod Windows
+        { // obsluga timerowa i praca w tle tylko pod Windows - XAML ma win:
 
-            p.k.SetSettingsBool("autobackup", uiSwitch.IsOn);
+            // p.k.SetSettingsBool("autobackup", uiSwitch.IsOn);    - już nie stosujemy zmiennej
             if (uiSwitch.IsOn)
             {
                 await AndroidAskPermissiona();     // bo musi zapytac przeciez z UI thread, nie dopiero o północy
-                await App.DodajTriggerPolnocny();
+                await p.k.DodajTriggerPolnocny();
             }
             else
-                foreach (var oTask in Windows.ApplicationModel.Background.BackgroundTaskRegistration.AllTasks)
-                {
-                    if (oTask.Value.Name == "PKARsmsBackup_Daily")
-                        oTask.Value.Unregister(true);
-                }
+            {
+                p.k.UnregisterTriggers();   // wszystkie - bo i tak nie ma innych triggerów rejestrowanych
+            }
         }
 
         private void SetLastDate(bool bImport)
@@ -184,6 +189,7 @@ namespace BackupSMS
 
             return new DateTime(iYr, iMn, iDy);
         }
+
 
         private void UstawSince()
         {
@@ -221,51 +227,76 @@ namespace BackupSMS
 
         private async void uiImport_Click(object sender, RoutedEventArgs e)
         {
-            if (!await p.k.DialogBoxYN("Are you sure? Import all SMS messages?")) return;
+            if (!await p.k.DialogBoxYNAsync("Are you sure? Import all SMS messages?")) return;
 
+            GuzikiEnable(false);
             ImportSMSow(new DateTimeOffset(1990, 1, 1, 1, 1, 1, System.TimeSpan.FromSeconds(0)));
             SetLastDate(true);
+            GuzikiEnable(true);
         }
 
         private void uiImportSince_Click(object sender, RoutedEventArgs e)
         {
+            GuzikiEnable(false);
             ImportSMSow(GetLastDate(true));
             SetLastDate(true);
+            GuzikiEnable(true);
         }
 
-        private void Page_Loaded(object sender, RoutedEventArgs e)
+        private async void Page_Loaded(object sender, RoutedEventArgs e)
         {
             uiVers.Text = p.k.GetAppVers();
+            p.k.ProgRingInit(true, true);
 
-            if (App.GetSDcardFolder() == null)
+            // 2021.05: poprzednia logic: nie ma zapisywania gdy nie ma  karty SD
+            // nowa logic: zapisywanie jest zawsze, najwyżej do folderu i Share
+            //      przy braku SD nie ma tylko Timera
+
             {
-                uiReadAll.IsEnabled = false;
-                uiReadSinceLast.IsEnabled = false;
-                uiReadDay.IsEnabled = false;
+                // w {}, żeby szybko zlikwidować oFold
+                Windows.Storage.StorageFolder oFold = await p.k.GetLogFolderRootAsync(false);
+                //if (App.GetSDcardFolder() == null)
 
-                uiMsgCnt.Text = "No SD card detected!";
+                if (oFold is null)
+                {
+                    uiSwitch.Visibility = Visibility.Collapsed;
+                    p.k.SetSettingsBool("noSDcard", true);
+                    // uiMsgCnt.Text = "No SD card detected!";
+                }
+                else
+                {
+                    uiSwitch.Visibility = Visibility.Visible ;
+                    p.k.SetSettingsBool("noSDcard", false);
+
+                    uiSwitch.IsOn = p.k.IsTriggersRegistered();
+                    if (!uiSwitch.IsOn)
+                    {
+                        if (p.k.GetSettingsBool("autobackup"))
+                        {
+                            // nie mamy triggera - ale może mieliśmy mieć, wedle starego Settings
+                            uiSwitch.IsOn = true;
+                            await p.k.DodajTriggerPolnocny();
+                        }
+                    }
+                }
             }
-            double dVal;
-            dVal = (Math.Min(uiGrid.ActualHeight, uiGrid.ActualWidth)) / 2;
-            // for Android
-            if (dVal < 1) dVal = 100;
 
-            uiProcesuje.Width = dVal;
-            uiProcesuje.Height = dVal;
-
-            uiSwitch.IsOn = p.k.GetSettingsBool("autobackup");
-            uiAutoChange_Toggle(null, null);   // ustawianie triggera
+            //uiAutoChange_Toggle(null, null);   // ustawianie triggera
             uiLog.Text = p.k.GetSettingsString("internalog");
 
             UstawSince();
-
+#if DEBUG
+            await p.k.CrashMessageShowAsync();
+#endif
 
         }
 #endregion
 
 #region "Android specific"
 
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
         private async System.Threading.Tasks.Task<bool> AndroidAskPermissiona()
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
 #if __ANDROID__
 
@@ -275,15 +306,15 @@ namespace BackupSMS
             requestPermission.Add(Android.Manifest.Permission.ReadContacts);
             requestPermission.Add(Android.Manifest.Permission.WriteExternalStorage);
 
-            //return await BeforeUno.AndroidHelpers.AndroidPermissionAsync(requestPermission.ToArray(), null);
-            return await Windows.Extensions.PermissionsHelper.AndroidPermissionAsync(requestPermission.ToArray(), null);
+            return await BeforeUno.AndroidHelpers.AndroidPermissionAsync(requestPermission.ToArray(), null);
+            //return await Windows.Extensions.PermissionsHelper.AndroidPermissionAsync(requestPermission.ToArray(), null);
 #else
             return true;
 #endif
 
         }
 
-
+#if false
         private async System.Threading.Tasks.Task<bool> AndroidAskPermissionaOld()
         {
 #if __ANDROID__
@@ -328,7 +359,7 @@ namespace BackupSMS
             // check if permission is already granted
             foreach (string permiss in requestPermission)
             {
-                if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(Uno.UI.ContextHelper.Current, permiss)
+                if (AndroidX.Core.Content.ContextCompat.CheckSelfPermission(Uno.UI.ContextHelper.Current, permiss)
                     != Android.Content.PM.Permission.Granted)
                 {
                     askForPermission.Add(permiss);
@@ -363,7 +394,7 @@ namespace BackupSMS
             {
                 current.RequestPermissionsResultWithResults += handlerSMSperm;
 
-                Android.Support.V4.App.ActivityCompat.RequestPermissions(Uno.UI.BaseActivity.Current, requestPermission.ToArray(), 1);
+                AndroidX.Core.App.ActivityCompat.RequestPermissions(Uno.UI.BaseActivity.Current, requestPermission.ToArray(), 1);
 
                 var result = await tcs.Task;
                 if (result.GrantResults.Length < 1)
@@ -386,7 +417,6 @@ namespace BackupSMS
 
         }
 
-
         private async System.Threading.Tasks.Task<bool> AndroidDirInitOld()
         {
 #if __ANDROID__
@@ -406,7 +436,7 @@ namespace BackupSMS
             {
                 current.RequestPermissionsResultWithResults += handler;
 
-                Android.Support.V4.App.ActivityCompat.RequestPermissions(Uno.UI.BaseActivity.Current, new[] { Android.Manifest.Permission.WriteExternalStorage }, 1);
+                AndroidX.Core.App.ActivityCompat.RequestPermissions(Uno.UI.BaseActivity.Current, new[] { Android.Manifest.Permission.WriteExternalStorage }, 1);
 
                 var result = await tcs.Task;
                 if (result.GrantResults.Length < 1)
@@ -428,6 +458,43 @@ namespace BackupSMS
         }
 
         private static string defaultSmsApp = "";
+
+        private async System.Threading.Tasks.Task<bool> SwitchSmsAppMain(string sNaAppName)
+        {
+
+            if (Android.OS.Build.VERSION.SdkInt < Android.OS.BuildVersionCodes.Q)
+            {
+                // działa od API 19 do API 28, potem już nie
+                // https://developer.android.com/reference/android/provider/Telephony.Sms.Intents
+                var intent = new Android.Content.Intent(Android.Provider.Telephony.Sms.Intents.ActionChangeDefault);
+                intent.PutExtra(Android.Provider.Telephony.Sms.Intents.ExtraPackageName, sNaAppName);
+
+                await BeforeUno.AndroidHelpers.InvokeIntentAsync(intent);
+            }
+            else
+            {
+                string roleName = Android.App.Roles.RoleManager.RoleSms;
+                // ale to ponizej nie dziala! Błąd w Xamarin??
+
+                // var intent = Android.App.Roles.RoleManager.createRequestRoleIntent(roleName);
+                //var intent = RequestRoleIntent(roleName);
+
+                //.RoleSMS;
+                //    .RequestRoleIntent(.Content.Intent(Android.Provider.Telephony.Sms.Intents.ActionChangeDefault);
+                //intent.PutExtra(Android.Provider.Telephony.Sms.Intents.ExtraPackageName, sNaAppName);
+
+                //await BeforeUno.AndroidHelpers.InvokeIntentAsync(intent);
+            }
+
+            // sprawdzenie rezultatu przełączenia
+            var context = Android.App.Application.Context;
+            string currSmsApp = Android.Provider.Telephony.Sms.GetDefaultSmsPackage(context);
+            if (currSmsApp == sNaAppName)
+                return true;
+
+            return false; // zmiana nie zostala dokonana
+        }
+
         private async System.Threading.Tasks.Task<bool> SwitchSmsApp(bool naMnie)
         {
 #if __ANDROID__
@@ -447,19 +514,9 @@ namespace BackupSMS
 
                 defaultSmsApp = currSmsApp;
 
-                var intent = new Android.Content.Intent(Android.Provider.Telephony.Sms.Intents.ActionChangeDefault);
-                intent.PutExtra(Android.Provider.Telephony.Sms.Intents.ExtraPackageName, context.PackageName);
+                return await SwitchSmsAppMain(context.PackageName);
 
-                await BeforeUno.AndroidHelpers.InvokeIntentAsync(intent);
 
-                currSmsApp = Android.Provider.Telephony.Sms.GetDefaultSmsPackage(context);
-                if (currSmsApp == context.PackageName)
-                    return true;
-
-                return false; // zmiana nie zostala dokonana
-
-                // działa od API 19 do API 28, potem już nie
-                // https://developer.android.com/reference/android/provider/Telephony.Sms.Intents
                 // context.StartActivity(intent);
                 // https://developer.android.com/guide/topics/permissions/default-handlers#java
                 // albo: startActivityForResult(setSmsAppIntent, your-result-code);
@@ -473,36 +530,22 @@ namespace BackupSMS
                 if (defaultSmsApp == context.PackageName)
                     return true;    // ze niby zmieniac na samego siebie - czyli jest jak trzeba
 
-                // skoro mamy zapamietane na co przełączyć, i nie jesteśmy to my sami - przywracamy
-                var intent = new Android.Content.Intent(Android.Provider.Telephony.Sms.Intents.ActionChangeDefault);
-                intent.PutExtra(Android.Provider.Telephony.Sms.Intents.ExtraPackageName, defaultSmsApp);
-                context.StartActivity(intent);
+                return await SwitchSmsAppMain(defaultSmsApp);
 
-                await BeforeUno.AndroidHelpers.InvokeIntentAsync(intent);
-
-                var currSmsApp = Android.Provider.Telephony.Sms.GetDefaultSmsPackage(context);
-                if (currSmsApp == defaultSmsApp)
-                    return true;
-
-                return false; // zmiana nie zostala dokonana
             }
 #else
             return true;
 #endif
         }
-#endregion
+#endif
+        #endregion
 
         private async void ImportSMSow(DateTimeOffset oDTsince)
         {
             var retval = await AndroidAskPermissiona();
+            if (!retval) return;
 
-            if (!await AndroidAskPermissiona()) return;
-
-#if __ANDROID__
-           BeforeUno.ChatMessageStore oStore = await BeforeUno.ChatMessageManager.RequestStoreAsync();
-#else
             Windows.ApplicationModel.Chat.ChatMessageStore oStore = await Windows.ApplicationModel.Chat.ChatMessageManager.RequestStoreAsync();
-#endif
             if (oStore == null)
             {
                 p.k.DialogBox("No permission (or this is not a phone)");
@@ -511,7 +554,10 @@ namespace BackupSMS
 
             oDTsince = oDTsince.AddMinutes(10);  // musi byc czas na przekopiowanie pliku :)
 
+            int iImportLimit = 200;
+
             // browse plik
+
             var picker = new Windows.Storage.Pickers.FileOpenPicker();
             picker.FileTypeFilter.Add(".csv");
 
@@ -521,29 +567,21 @@ namespace BackupSMS
                 return;
 
             string sTxt = await Windows.Storage.FileIO.ReadTextAsync(oFile);
+            string[] aLinie = sTxt.Split('\n');
+            uiMsgCnt.Text = "Read " + aLinie.Length + " messages.";
 
-            // return; // na poczatek testy filepicker'a
+#if __ANDROID__
+
 
             // Inbox|Wojciech Lewandowski|+48601446602|||17/08/2019 10:24:32|Od 22 do 31 sierpnia w tym terminie 7 dniOd 22 do 31 sierpnia w tym terminie 7 dni
             // Outbox|||Kasia18|+48668454898|15/08/2019 22:31:14|Masz juz umowionego penisa na niedzielne popołudnie i noc na poniedziałek?Masz juz umowionego penisa na niedzielne popołudnie i noc na poniedziałek?
-
-            // sTxt = "Inbox|Wojciech Lewandowski|+48601446602|||25/08/2019 10:24:32|Od 22 do 31 sierpnia w tym terminie 7 dni DOPISANE";
-
-
-#if __ANDROID__
-            // switch default SMS app
-            //var currSmsApp = Android.Provider.Telephony.Sms.GetDefaultSmsPackage(Android.App.Application.Context);
-            //if (currSmsApp != Android.App.Application.Context.PackageName)
-            //{
-            //    p.k.DialogBox("only app selected as default SMS app can write do SMS store");
-            //    return;
-            //}
-            await SwitchSmsApp(true);
+            if (!await oStore.SwitchDefaultSMSapp(true)) return;
+            //if(!await SwitchSmsApp(true)) return;
 #endif
 
-            string[] aLinie = sTxt.Split('\n');
 
-            GuzikiEnable(false);
+            uiMsgCnt.Text = "Please wait, importing " + aLinie.Length + " messages...";
+            GuzikiEnable(false, aLinie.Length);
             int iCntAll = 0;
             int iCntAdd = 0;
 
@@ -600,6 +638,7 @@ namespace BackupSMS
                 oMsg.Body = oMsg.Body.Replace("\\n", "\n");
 
                 iCntAll++;
+                p.k.ProgRingInc();
 
                 // ale wstawiamy tylko wtedy gdy jest data taka jak trzeba ("since")
                 if (oDTsince < oMsg.LocalTimestamp)
@@ -607,14 +646,20 @@ namespace BackupSMS
                     await oStore.SaveMessageAsync(oMsg);
                     iCntAdd++;
                 }
+
+#if DEBUG
+                iImportLimit--;
+                if (iImportLimit < 1) break;
+#endif
             }
 
-#if __ANDROID__
-            await SwitchSmsApp(false);
-#endif
-
-            GuzikiEnable(true);
+                GuzikiEnable(true);
+            uiMsgCnt.Text = "";
             p.k.DialogBox("Imported " + iCntAdd + " messages (out of " + iCntAll + ")");
+
+#if __ANDROID__
+            await oStore.SwitchDefaultSMSapp(false);
+#endif
 
         }
 

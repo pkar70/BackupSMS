@@ -1,6 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap mp rescap">
-  <Identity Name="622PKar.BackupSMS" Publisher="CN=B2AF14E8-43FD-463C-83BA-4CEC47122EA2" Version="10.2004.4.0" />
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5" 
+         IgnorableNamespaces="uap mp rescap uap3 uap5">
+  <Identity Name="622PKar.BackupSMS" Publisher="CN=B2AF14E8-43FD-463C-83BA-4CEC47122EA2" Version="10.2105.7.0" />
   <mp:PhoneIdentity PhoneProductId="b84b1ec1-3f25-406b-ba1d-7e3bdfb3497c" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>BackupSMS</DisplayName>
@@ -30,6 +36,18 @@
             </uap:SupportedFileTypes>
           </uap:FileTypeAssociation>
         </uap:Extension>
+        <uap:Extension Category="windows.appService">
+          <uap:AppService Name="com.microsoft.pkar.backupsms"/>
+        </uap:Extension>
+        <uap5:Extension
+		  Category="windows.appExecutionAlias"
+		  Executable="BackupSMS.exe"
+		  EntryPoint="BackupSMS.App">
+          <uap5:AppExecutionAlias>
+            <uap5:ExecutionAlias Alias="BackupSMS.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
+
       </Extensions>
     </Application>
   </Applications>
