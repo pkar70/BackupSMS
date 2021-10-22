@@ -13,6 +13,6 @@ Primary version.
  To run it, you must use UnoPlatform with PR#3055 and PR#2544
 
 # Privacy policy
- http://beskid.geo.uj.edu.pl/p/ms/backupsms-privacy.htm
+ https://github.com/pkar70/BackupSMS/wiki/Privacy-policy
 
  For history (in Polish), see MainPage.xaml.cs file.
