@@ -5,15 +5,13 @@ VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "BackupSMS_VB", "BackupSMS_VB\BackupSMS_VB.vbproj", "{2F09A781-5A55-4597-A90E-DA684884BD3C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupSMS_VC", "BackupSMS-VC\BackupSMS_VC.csproj", "{CFC126BD-C17A-4704-B294-9934CD934F39}"
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "BackupSMS.Shared", "BackupSMS_Uno\BackupSMS_Uno.Shared\BackupSMS.Shared.shproj", "{6279C845-92F8-4333-AB99-3D213163593C}"
 EndProject
-Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "BackupSMS.Shared", "BackupSMS\BackupSMS_Uno.Shared\BackupSMS.Shared.shproj", "{6279C845-92F8-4333-AB99-3D213163593C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupSMS.Droid", "BackupSMS_Uno\BackupSMS_Uno.Droid\BackupSMS.Droid.csproj", "{722A3DE8-57FB-4249-8113-7042BA51A301}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupSMS.Droid", "BackupSMS\BackupSMS_Uno.Droid\BackupSMS.Droid.csproj", "{722A3DE8-57FB-4249-8113-7042BA51A301}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupSMS.iOS", "BackupSMS_Uno\BackupSMS_Uno.iOS\BackupSMS.iOS.csproj", "{DBD4DBE0-3B3A-4C4D-94AA-F05C3E539BB7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupSMS.iOS", "BackupSMS\BackupSMS_Uno.iOS\BackupSMS.iOS.csproj", "{DBD4DBE0-3B3A-4C4D-94AA-F05C3E539BB7}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupSMS.UWP", "BackupSMS\BackupSMS_Uno.UWP\BackupSMS.UWP.csproj", "{46F98B83-CCA2-4BE5-BABA-BE11C4CDF7AC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupSMS.UWP", "BackupSMS_Uno\BackupSMS_Uno.UWP\BackupSMS.UWP.csproj", "{46F98B83-CCA2-4BE5-BABA-BE11C4CDF7AC}"
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "TestProgressRing.Shared", "TestProgressRing\TestProgressRing.Shared\TestProgressRing.Shared.shproj", "{FCE00D05-1751-4821-BB8D-34E4E4DCBF1E}"
 EndProject
